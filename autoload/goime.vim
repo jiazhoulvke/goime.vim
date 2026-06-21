@@ -461,6 +461,9 @@ function! s:setup_insert_mappings()
   if !s:chinese_mode
     return
   endif
+  if g:goime_no_default_mappings
+    return
+  endif
 
   " 字母键映射到 goime
   for c in split('abcdefghijklmnopqrstuvwxyz', '\zs')
