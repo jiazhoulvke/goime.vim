@@ -16,7 +16,8 @@ let s:popup_win = -1           " 候选窗窗口 ID
 let s:candidate_pages = 1      " 总页数
 let s:candidate_current_page = 0  " 当前页
 let s:prev_insert_mode = 0     " 上次调用 on_insert_enter 是否已在插入模式
-let s:preedit_text = ''        " 当前 preedit 文本（用于候选窗显示）
+let s:preedit_text = ''
+let s:connecting = 0        " 当前 preedit 文本（用于候选窗显示）
 
 " ============================================================================
 " 工具函数
@@ -99,9 +100,10 @@ endfunction
 
 " goime#connect 连接到 goimed 守护进程
 function! goime#connect()
-  if s:connected
+  if s:connected || s:connecting
     return
   endif
+  let s:connecting = 1
 
   let socket_path = goime#_socket_path()
 
@@ -162,7 +164,11 @@ function! goime#connect()
         let waited += 50
       endwhile
       if goime#_socket_exists(socket_path)
-        let ch = sockconnect('unix', socket_path, {'mode': 'raw'})
+        if exists('*sockconnect')
+          let ch = sockconnect('unix', socket_path, {'mode': 'raw'})
+        else
+          let ch = ch_open('unix:' . socket_path, {'mode': 'raw', 'timeout': 2000})
+        endif
         if type(ch) != v:t_number || ch != 0
           let s:channel = ch
           let s:connected = 1
@@ -179,6 +185,7 @@ function! goime#connect()
     call goime#_log('连接异常：' . v:exception)
     let s:connected = 0
   endtry
+  let s:connecting = 0
 endfunction
 
 " goime#disconnect 断开连接
