@@ -136,34 +136,7 @@ function! goime#connect()
       return
     endif
     if exists('*sockconnect')
-      call goime#_log('连接 ' . socket_path)
       let ch = sockconnect('unix', socket_path, {'mode': 'raw'})
-      call goime#_log('sockconnect 返回: ' . type(ch) . ' ' . ch)
-
-      if type(ch) == v:t_number && ch == 0
-        " Socket 可能已残留，尝试重启 goimed
-        call goime#_log('socket 连接失败，尝试重启 goimed')
-        call delete(socket_path)
-        let binary = goime#_find_binary()
-        if binary !=# ''
-          call job_start([binary], {'out_cb': {_, data -> goime#_log(data)}})
-          let waited = 0
-          while !goime#_socket_exists(socket_path) && waited < 1000
-            sleep 50m
-            let waited += 50
-          endwhile
-        endif
-        if goime#_socket_exists(socket_path)
-          let ch = sockconnect('unix', socket_path, {'mode': 'raw'})
-          if type(ch) == v:t_number && ch == 0
-            call goime#_log('连接 goimed 失败')
-            return
-          endif
-        else
-          call goime#_log('启动 goimed 失败')
-          return
-        endif
-      endif
     else
       let ch = ch_open('unix:' . socket_path, {'mode': 'raw', 'timeout': 2000})
       if type(ch) == v:t_number && ch == 0
@@ -177,6 +150,31 @@ function! goime#connect()
     call goime#_log('已连接 goimed')
 
     call goime#_send_hello()
+  catch /^Vim(let):E902:/
+    " 连接被拒绝，socket 可能残留
+    call delete(socket_path)
+    let binary = goime#_find_binary()
+    if binary !=# ''
+      call job_start([binary], {'out_cb': {_, data -> goime#_log(data)}})
+      let waited = 0
+      while !goime#_socket_exists(socket_path) && waited < 1000
+        sleep 50m
+        let waited += 50
+      endwhile
+      if goime#_socket_exists(socket_path)
+        let ch = sockconnect('unix', socket_path, {'mode': 'raw'})
+        if type(ch) != v:t_number || ch != 0
+          let s:channel = ch
+          let s:connected = 1
+          call ch_setoptions(ch, {'callback': 'goime#_on_channel_data'})
+          call goime#_log('已连接 goimed')
+          call goime#_send_hello()
+          return
+        endif
+      endif
+    endif
+    call goime#_log('启动 goimed 失败')
+    let s:connected = 0
   catch
     call goime#_log('连接异常：' . v:exception)
     let s:connected = 0
