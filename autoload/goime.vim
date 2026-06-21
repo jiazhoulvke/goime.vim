@@ -151,18 +151,53 @@ function! goime#connect()
 
     call goime#_send_hello()
   catch /^Vim(let):E902:/
-    " 连接被拒绝，socket 可能残留，启动 goimed
+    " 连接被拒绝，socket 可能残留
     call delete(socket_path)
     let binary = goime#_find_binary()
     if binary !=# ''
       call job_start([binary], {'out_cb': {_, data -> goime#_log(data)}})
       call goime#_log('正在启动 goimed...')
+      call timer_start(500, {_ -> goime#_connect_retry(socket_path)})
     endif
     let s:connected = 0
   catch
     call goime#_log('连接异常：' . v:exception)
     let s:connected = 0
   endtry
+endfunction
+
+" goime#_connect_retry 等待 socket 就绪后重试连接
+function! goime#_connect_retry(socket_path)
+  " 等待 socket 出现（最多 2s）
+  let waited = 0
+  while !goime#_socket_exists(a:socket_path) && waited < 2000
+    sleep 100m
+    let waited += 100
+  endwhile
+  if !goime#_socket_exists(a:socket_path)
+    call goime#_log('goimed 启动超时')
+    return
+  endif
+  " 连接
+  if exists('*sockconnect')
+    let ch = sockconnect('unix', a:socket_path, {'mode': 'raw'})
+    if type(ch) != v:t_number || ch != 0
+      let s:channel = ch
+      let s:connected = 1
+      call ch_setoptions(ch, {'callback': 'goime#_on_channel_data'})
+      call goime#_log('已连接 goimed')
+      call goime#_send_hello()
+    endif
+  else
+    let ch = ch_open('unix:' . a:socket_path, {'mode': 'raw', 'timeout': 2000})
+    if type(ch) != v:t_number || ch != 0
+      let s:channel = ch
+      let s:connected = 1
+      call ch_setoptions(ch, {'callback': 'goime#_on_channel_data'})
+      call goime#_log('已连接 goimed')
+      call goime#_send_hello()
+    endif
+  endif
 endfunction
 
 " goime#disconnect 断开连接
