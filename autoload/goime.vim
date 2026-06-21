@@ -34,12 +34,14 @@ function! goime#_socket_path()
     return g:goime_socket_path
   endif
   let runtime_dir = $XDG_RUNTIME_DIR
-  if runtime_dir !=# '' && goime#_socket_exists(runtime_dir . '/goime.sock')
+  if runtime_dir !=# ''
     return runtime_dir . '/goime.sock'
   endif
-  let uid = system('id -u')
-  let uid = substitute(uid, '\n', '', 'g')
-  return '/tmp/goime-' . uid . '.sock'
+  let tmpdir = $TMPDIR
+  if tmpdir !=# ''
+    return tmpdir . '/goime-' . goime#_uid() . '.sock'
+  endif
+  return '/tmp/goime-' . goime#_uid() . '.sock'
 endfunction
 
 " goime#_find_binary 查找 goimed 可执行文件
