@@ -45,10 +45,44 @@ let g:goime_debug = 0           " 调试日志
 
 ## 状态栏
 
+goime.vim 提供 `goime#status()` 函数，可在状态栏显示当前输入法状态（中文/英文/未连接）。
+
+### 基础用法
+
 ```vim
+" 直接加到 statusline
 set statusline+=%{goime#status()}
+
+" 或覆盖整个 statusline
+set statusline=%f\ %m\ %=%{goime#status()}
 ```
 
-airline 自动集成；lightline 需手动配置。
+### 自定义显示文本
+
+```vim
+let g:goime_status_cn = '中'     " 中文模式（默认显示方案名，如'小鹤双拼'）
+let g:goime_status_en = 'EN'     " 英文模式
+let g:goime_status_off = ''      " 未连接（空=隐藏组件）
+```
+
+### airline
+
+自动集成，无需配置。
+
+### lightline
+
+```vim
+let g:lightline = {
+      \ 'active': {
+      \   'left': [
+      \     ['mode', 'paste', 'goime'],
+      \     ['readonly', 'filename', 'modified']
+      \   ]
+      \ },
+      \ 'component': {
+      \   'goime': '%{goime#status()}'
+      \ }
+      \ }
+```
 
 许可证 GPLv3
