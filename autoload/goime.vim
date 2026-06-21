@@ -461,7 +461,7 @@ function! s:setup_insert_mappings()
   if !s:chinese_mode
     return
   endif
-  if g:goime_no_default_mappings
+  if get(g:, 'goime_no_default_mappings', 0)
     return
   endif
 

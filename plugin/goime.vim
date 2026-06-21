@@ -46,6 +46,9 @@ let g:goime_page_size = get(g:, 'goime_page_size', 5)
 " 期望启用的输入方案列表（空=使用服务端全部）
 let g:goime_schemes = get(g:, 'goime_schemes', [])
 
+" 禁用所有默认按键映射
+let g:goime_no_default_mappings = get(g:, 'goime_no_default_mappings', 0)
+
 " 自定义按键映射
 if !exists('g:goime_map_toggle')
   let g:goime_map_toggle = '<S-Space>'
