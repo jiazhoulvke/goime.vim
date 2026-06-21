@@ -41,7 +41,56 @@ let g:goime_debug = 0           " 调试日志
 
 ## 按键
 
-`a-z` 输入拼音，`1-0` 选词，`<Space>` 选首选，`<CR>` 上屏，`,/.` 翻页。
+### 默认映射
+
+中文模式下自动设置以下插入模式映射：
+
+| 键 | 功能 | 可自定义变量 |
+|---|---|---|
+| `a-z` | 输入拼音 | — |
+| `1-9` | 选第 1-9 个候选 | — |
+| `0` | 选第 10 个候选 | — |
+| `<Space>` | 选首选词 | `g:goime_map_space` |
+| `<BS>` | 回删拼音 | `g:goime_map_backspace` |
+| `<CR>` | 上屏当前拼音 | `g:goime_map_enter` |
+| `<Esc>` | 清空拼音 | `g:goime_map_escape` |
+| `<Tab>` | 临时英文模式 | `g:goime_map_tab` |
+| `,` | 上一页 | `g:goime_map_page_prev` |
+| `.` | 下一页 | `g:goime_map_page_next` |
+
+始终有效的全局映射（不受 `g:goime_no_default_mappings` 影响）：
+
+| 键 | 功能 |
+|---|---|
+| `<S-Space>` | 中/英文切换 |
+| `<C-;>` | 启用/禁用插件 |
+
+### 自定义映射键
+
+```vim
+" 默认值
+let g:goime_map_toggle = '<S-Space>'        " 中/英文切换
+let g:goime_map_page_prev = ','              " 上一页
+let g:goime_map_page_next = '.'              " 下一页
+let g:goime_map_space = '<Space>'            " 选首选
+let g:goime_map_backspace = '<BS>'           " 回删拼音
+let g:goime_map_enter = '<CR>'               " 上屏
+let g:goime_map_escape = '<Esc>'             " 清空拼音
+let g:goime_map_tab = '<Tab>'               " 临时英文
+let g:goime_map_toggle_enable = '<C-;>'      " 启用/禁用插件
+
+" 例如改为 [ 和 ] 翻页
+let g:goime_map_page_prev = '['
+let g:goime_map_page_next = ']'
+```
+
+### 禁用所有默认映射
+
+```vim
+let g:goime_no_default_mappings = 1
+```
+
+设置后，除 `<S-Space>`（中/英切换）和 `<C-;>`（启/禁用）外，所有插入模式映射都不会自动创建，你可通过自定义变量或 `inoremap` 手动配置。
 
 ## 状态栏
 
