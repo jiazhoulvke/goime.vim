@@ -136,7 +136,10 @@ function! goime#connect()
       return
     endif
     if exists('*sockconnect')
+      call goime#_log('连接 ' . socket_path)
       let ch = sockconnect('unix', socket_path, {'mode': 'raw'})
+      call goime#_log('sockconnect 返回: ' . type(ch) . ' ' . ch)
+
       if type(ch) == v:t_number && ch == 0
         " Socket 可能已残留，尝试重启 goimed
         call goime#_log('socket 连接失败，尝试重启 goimed')
