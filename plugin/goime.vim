@@ -46,6 +46,36 @@ let g:goime_page_size = get(g:, 'goime_page_size', 5)
 " 期望启用的输入方案列表（空=使用服务端全部）
 let g:goime_schemes = get(g:, 'goime_schemes', [])
 
+" 自定义按键映射
+if !exists('g:goime_map_toggle')
+  let g:goime_map_toggle = '<S-Space>'
+endif
+if !exists('g:goime_map_page_prev')
+  let g:goime_map_page_prev = ','
+endif
+if !exists('g:goime_map_page_next')
+  let g:goime_map_page_next = '.'
+endif
+if !exists('g:goime_map_space')
+  let g:goime_map_space = '<Space>'
+endif
+if !exists('g:goime_map_backspace')
+  let g:goime_map_backspace = '<BS>'
+endif
+if !exists('g:goime_map_enter')
+  let g:goime_map_enter = '<CR>'
+endif
+if !exists('g:goime_map_escape')
+  let g:goime_map_escape = '<Esc>'
+endif
+if !exists('g:goime_map_tab')
+  let g:goime_map_tab = '<Tab>'
+endif
+if !exists('g:goime_map_toggle_enable')
+  let g:goime_map_toggle_enable = '<C-;>'
+endif
+
+
 " ============================================================================
 " 命令
 " ============================================================================

@@ -474,16 +474,14 @@ function! s:setup_insert_mappings()
   " 0 键选第 10 个候选（索引 9）
   inoremap <silent> <expr> 0 goime#_on_number('10')
 
-  " 逗号/句号翻页
-  inoremap <silent> <expr> , goime#_on_comma()
-  inoremap <silent> <expr> . goime#_on_period()
-
-  " 特殊键
-  inoremap <silent> <expr> <Space> goime#_on_space()
-  inoremap <silent> <expr> <BS>    goime#_on_backspace()
-  inoremap <silent> <expr> <CR>    goime#_on_enter()
-  inoremap <silent> <expr> <Esc>   goime#_on_escape()
-  inoremap <silent> <expr> <Tab>   goime#_on_tab()
+  " 翻页 + 特殊键（支持用户自定义映射）
+  execute 'inoremap <silent> <expr> ' . g:goime_map_page_prev . ' goime#_on_comma()'
+  execute 'inoremap <silent> <expr> ' . g:goime_map_page_next . ' goime#_on_period()'
+  execute 'inoremap <silent> <expr> ' . g:goime_map_space . ' goime#_on_space()'
+  execute 'inoremap <silent> <expr> ' . g:goime_map_backspace . ' goime#_on_backspace()'
+  execute 'inoremap <silent> <expr> ' . g:goime_map_enter . ' goime#_on_enter()'
+  execute 'inoremap <silent> <expr> ' . g:goime_map_escape . ' goime#_on_escape()'
+  execute 'inoremap <silent> <expr> ' . g:goime_map_tab . ' goime#_on_tab()'
 endfunction
 
 " s:restore_insert_mappings 恢复插入模式映射
@@ -491,19 +489,19 @@ function! s:restore_insert_mappings()
   for c in split('abcdefghijklmnopqrstuvwxyz', '\zs')
     silent! execute 'iunmap ' . c
   endfor
-  silent! iunmap <Space>
-  silent! iunmap <BS>
-  silent! iunmap <CR>
-  silent! iunmap <Esc>
-  silent! iunmap <Tab>
+  execute 'silent! iunmap ' . g:goime_map_space
+  execute 'silent! iunmap ' . g:goime_map_backspace
+  execute 'silent! iunmap ' . g:goime_map_enter
+  execute 'silent! iunmap ' . g:goime_map_escape
+  execute 'silent! iunmap ' . g:goime_map_tab
   " 数字键 1-0
   for i in range(1, 9)
     silent! execute 'iunmap ' . i
   endfor
   silent! iunmap 0
-  " 逗号/句号
-  silent! iunmap ,
-  silent! iunmap .
+  " 翻页
+  execute 'silent! iunmap ' . g:goime_map_page_prev
+  execute 'silent! iunmap ' . g:goime_map_page_next
 endfunction
 
 " ============================================================================
@@ -551,6 +549,10 @@ function! goime#_on_enter()
   if !s:connected || !s:chinese_mode
     return "\<CR>"
   endif
+  " 补全菜单打开时让给补全插件
+  if pumvisible()
+    return "\<CR>"
+  endif
   if s:preedit_text !=# ''
     call goime#_send_enter()
     return ""
@@ -569,6 +571,10 @@ endfunction
 " goime#_on_tab 处理 Tab（选第二个候选）
 function! goime#_on_tab()
   if !s:connected || !s:chinese_mode || s:preedit_text ==# ''
+    return "\<Tab>"
+  endif
+  " 补全菜单打开时让给补全插件
+  if pumvisible()
     return "\<Tab>"
   endif
   call goime#_send_select(1)
