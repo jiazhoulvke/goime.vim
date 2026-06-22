@@ -18,6 +18,11 @@ let g:goime_socket_path = get(g:, 'goime_socket_path', '')
 
 " goimed 可执行文件路径，空则从 PATH 查找
 let g:goime_binary = get(g:, 'goime_binary', '')
+" TCP 主机地址（仅 TCP 模式有效，需同时设置 goime_port）
+let g:goime_host = get(g:, 'goime_host', '127.0.0.1')
+
+" TCP 端口，设置后启用 TCP 连接（空=使用 Unix socket）
+let g:goime_port = get(g:, 'goime_port', '')
 
 " 中文模式状态栏显示文本
 let g:goime_status_cn = get(g:, 'goime_status_cn', '中')

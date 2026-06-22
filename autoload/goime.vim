@@ -101,6 +101,11 @@ endfunction
 
 " goime#connect 连接到 goimed 守护进程
 function! goime#connect()
+  " TCP 模式（配置了 goime_port）
+  if g:goime_port !=# ""
+    call goime#_connect_tcp()
+    return
+  endif
   if s:connected
     return
   endif
@@ -168,6 +173,34 @@ function! goime#connect()
   endtry
 endfunction
 
+" goime#_connect_tcp TCP 连接 goimed
+function! goime#_connect_tcp()
+  let host = g:goime_host
+  let port = g:goime_port
+  let addr = host . ":" . port
+  try
+    if has("nvim")
+      return
+    endif
+    if exists("*sockconnect")
+      let ch = sockconnect("tcp", addr, {"mode": "raw"})
+    else
+      let ch = ch_open("tcp:" . addr, {"mode": "raw", "timeout": 2000})
+      if type(ch) == v:t_number && ch == 0
+        call goime#_log("TCP 连接 goimed 失败")
+        return
+      endif
+    endif
+    let s:channel = ch
+    let s:connected = 1
+    call ch_setoptions(ch, {"callback": "goime#_on_channel_data"})
+    call goime#_log("已连接 goimed (TCP " . addr . ")")
+    call goime#_send_hello()
+  catch
+    call goime#_log("TCP 连接异常: " . v:exception)
+    let s:connected = 0
+  endtry
+endfunction
 " goime#_connect_retry 等待 socket 就绪后重试连接
 function! goime#_connect_retry(socket_path)
   " 等待 socket 出现（最多 2s）
