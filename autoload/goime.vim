@@ -157,6 +157,21 @@ function! goime#connect()
     endif
     if exists('*sockconnect')
       let ch = sockconnect('unix', socket_path, {'mode': 'raw'})
+      if ch == 0
+        call goime#_log('连接 goimed 失败')
+        " 残留 socket 处理：删除文件，重启 goimed
+        if goime#_socket_exists(socket_path)
+          call delete(socket_path)
+        endif
+        let binary = goime#_find_binary()
+        if binary !=# ''
+          call job_start([binary], {'out_cb': {_, data -> goime#_log(data)}})
+          call goime#_log('正在启动 goimed...')
+          call timer_start(500, {_ -> goime#_connect_retry(socket_path)})
+        endif
+        let s:connected = 0
+        return
+      endif
     else
       let ch = ch_open('unix:' . socket_path, {'mode': 'raw', 'timeout': 2000})
       if type(ch) == v:t_number && ch == 0
