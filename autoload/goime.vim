@@ -337,7 +337,7 @@ endfunction
 
 " goime#disconnect 断开连接
 function! goime#disconnect()
-  if s:connected && type(s:channel) == v:t_channel
+  if s:connected
     call ch_close(s:channel)
   endif
   let s:channel = v:null
@@ -351,7 +351,7 @@ endfunction
 
 " goime#_send 发送 JSON Lines 消息
 function! goime#_send(msg)
-  if !s:connected || type(s:channel) != v:t_channel
+  if !s:connected
     return
   endif
   let json = goime#_json_encode(a:msg)
