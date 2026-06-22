@@ -7,7 +7,7 @@
 
 let s:channel = v:null           " Vim channel 句柄
 let s:connected = 0            " 是否已连接
-let s:chinese_mode = 0         " 1=中文模式，0=英文模式
+let s:chinese_mode = get(g:, 'goime_default_chinese', 1)  " 1=中文模式，0=英文模式
 let s:schemes = []             " 可用输入方案列表
 let s:active_scheme = ''       " 当前方案
 let s:page_size = 5            " 每页候选数
