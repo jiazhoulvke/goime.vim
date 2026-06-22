@@ -138,14 +138,16 @@ function! goime#connect()
     else
       call system(binary . ' &')
     endif
-    " 等待 socket 就绪（最多 1s）
+    " 等待 socket 就绪（最多 3s）
     let waited = 0
-    while !goime#_socket_exists(socket_path) && waited < 1000
-      sleep 50m
-      let waited += 50
+    while !goime#_socket_exists(socket_path) && waited < 3000
+      sleep 100m
+      let waited += 100
     endwhile
     if !goime#_socket_exists(socket_path)
       call goime#_log('goimed 启动超时')
+      " 超时后仍然尝试重试（goimed 可能正在加载词典）
+      call timer_start(500, {_ -> goime#_connect_retry(socket_path)})
       return
     endif
   endif
@@ -314,6 +316,9 @@ function! goime#_connect_retry(socket_path)
       call ch_setoptions(ch, {'callback': 'goime#_on_channel_data'})
       call goime#_log('已连接 goimed')
       call goime#_send_hello()
+      if s:chinese_mode
+        call s:setup_insert_mappings()
+      endif
     endif
   else
     let ch = ch_open('unix:' . a:socket_path, {'mode': 'raw', 'timeout': 2000})
@@ -323,6 +328,9 @@ function! goime#_connect_retry(socket_path)
       call ch_setoptions(ch, {'callback': 'goime#_on_channel_data'})
       call goime#_log('已连接 goimed')
       call goime#_send_hello()
+      if s:chinese_mode
+        call s:setup_insert_mappings()
+      endif
     endif
   endif
 endfunction
@@ -908,13 +916,11 @@ function! goime#toggle_enabled()
   let s:plugin_enabled = !s:plugin_enabled
   if s:plugin_enabled
     call goime#_log('GoIME 已启用')
-    if mode() ==# 'i' || mode() ==# 'ic'
-      if !s:connected
-        call goime#connect()
-      endif
-      if s:chinese_mode
-        call s:setup_insert_mappings()
-      endif
+    if !s:connected
+      call goime#connect()
+    endif
+    if s:chinese_mode
+      call s:setup_insert_mappings()
     endif
     echohl Statement | echo 'GoIME: 已启用' | echohl None
   else
