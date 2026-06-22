@@ -189,7 +189,17 @@ function! goime#connect()
       let ch = ch_open('unix:' . socket_path, {'mode': 'raw', 'timeout': 2000})
       if type(ch) == v:t_number && ch == 0
         call goime#_log('连接 goimed 失败')
-        return
+        " 残留 socket 处理
+        if goime#_socket_exists(socket_path)
+          call delete(socket_path)
+        endif
+        if goime#_start_goimed(socket_path)
+          let ch = ch_open('unix:' . socket_path, {'mode': 'raw', 'timeout': 2000})
+        endif
+        if type(ch) == v:t_number && ch == 0
+          call timer_start(2000, {_ -> goime#_connect_retry(socket_path)})
+          return
+        endif
       endif
     endif
     let s:channel = ch
