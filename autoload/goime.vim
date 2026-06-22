@@ -125,29 +125,25 @@ function! goime#connect()
 
   let socket_path = goime#_socket_path()
 
-  " Socket 不存在时尝试启动 goimed
+  " 残留 socket 检测：连接测试判断是否需要重启
+  if goime#_socket_exists(socket_path)
+    " 快速测试 socket 是否有效
+    if exists('*sockconnect')
+      let test_ch = sockconnect('unix', socket_path, {'mode': 'raw', 'timeout': 100})
+      if test_ch > 0
+        call ch_close(test_ch)
+      else
+        " Socket 无效（残留），删除并重新启动
+        call delete(socket_path)
+        call goime#_log('残留 socket 已清理')
+      endif
+      unlet test_ch
+    endif
+  endif
+
+  " Socket 不存在时启动 goimed
   if !goime#_socket_exists(socket_path)
-    let binary = goime#_find_binary()
-    if binary ==# ''
-      call goime#_log('goimed 未找到，请先安装：go install github.com/jiazhoulvke/goime/cmd/goimed@latest')
-      return
-    endif
-    " 异步启动 goimed
-    if has('job')
-      call job_start([binary], {'out_cb': {_, data -> goime#_log(data)}})
-    else
-      call system(binary . ' &')
-    endif
-    " 等待 socket 就绪（最多 3s）
-    let waited = 0
-    while !goime#_socket_exists(socket_path) && waited < 3000
-      sleep 100m
-      let waited += 100
-    endwhile
-    if !goime#_socket_exists(socket_path)
-      call goime#_log('goimed 启动超时')
-      " 超时后仍然尝试重试（goimed 可能正在加载词典）
-      call timer_start(500, {_ -> goime#_connect_retry(socket_path)})
+    if !goime#_start_goimed(socket_path)
       return
     endif
   endif
@@ -161,18 +157,14 @@ function! goime#connect()
       let ch = sockconnect('unix', socket_path, {'mode': 'raw'})
       if ch == 0
         call goime#_log('连接 goimed 失败')
-        " 残留 socket 处理：删除文件，重启 goimed
-        if goime#_socket_exists(socket_path)
-          call delete(socket_path)
+        call delete(socket_path)
+        if goime#_start_goimed(socket_path)
+          let ch = sockconnect('unix', socket_path, {'mode': 'raw'})
         endif
-        let binary = goime#_find_binary()
-        if binary !=# ''
-          call job_start([binary], {'out_cb': {_, data -> goime#_log(data)}})
-          call goime#_log('正在启动 goimed...')
-          call timer_start(500, {_ -> goime#_connect_retry(socket_path)})
+        if ch == 0
+          let s:connected = 0
+          return
         endif
-        let s:connected = 0
-        return
       endif
     else
       let ch = ch_open('unix:' . socket_path, {'mode': 'raw', 'timeout': 2000})
@@ -190,17 +182,44 @@ function! goime#connect()
   catch /^Vim(let):E902:/
     " 连接被拒绝，socket 可能残留
     call delete(socket_path)
-    let binary = goime#_find_binary()
-    if binary !=# ''
-      call job_start([binary], {'out_cb': {_, data -> goime#_log(data)}})
-      call goime#_log('正在启动 goimed...')
-      call timer_start(500, {_ -> goime#_connect_retry(socket_path)})
+    if goime#_start_goimed(socket_path)
+      let ch = sockconnect('unix', socket_path, {'mode': 'raw'})
+      if ch > 0
+        let s:channel = ch
+        let s:connected = 1
+        call ch_setoptions(ch, {'callback': 'goime#_on_channel_data'})
+        call goime#_log('已连接 goimed')
+        call goime#_send_hello()
+      endif
     endif
     let s:connected = 0
   catch
     call goime#_log('连接异常：' . v:exception)
     let s:connected = 0
   endtry
+endfunction
+
+" goime#_start_goimed 启动 goimed 并等待 socket 就绪（最多 3s）
+" 成功返回 1，超时返回 0
+function! goime#_start_goimed(socket_path)
+  let binary = goime#_find_binary()
+  if binary ==# ''
+    call goime#_log('goimed 未找到，请先安装：go install github.com/jiazhoulvke/goime/cmd/goimed@latest')
+    return 0
+  endif
+  call goime#_log('正在启动 goimed...')
+  call system(binary . ' >/dev/null 2>&1 &')
+  " 等待 socket 就绪（最多 3s）
+  let waited = 0
+  while !goime#_socket_exists(a:socket_path) && waited < 3000
+    sleep 100m
+    let waited += 100
+  endwhile
+  if !goime#_socket_exists(a:socket_path)
+    call goime#_log('goimed 启动超时')
+    return 0
+  endif
+  return 1
 endfunction
 
 " goime#_read_port_file 读取端口文件 ~/.cache/goime/goime.port
