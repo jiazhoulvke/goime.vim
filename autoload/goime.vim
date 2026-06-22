@@ -65,6 +65,19 @@ function! goime#_find_binary()
   if executable('goimed')
     return 'goimed'
   endif
+  " GVim/桌面环境可能不含 ~/go/bin，检查常见位置
+  let home = expand('$HOME')
+  if home !=# ''
+    let candidates = [
+          \ home . '/go/bin/goimed',
+          \ home . '/.go/bin/goimed',
+          \]
+    for candidate in candidates
+      if executable(candidate)
+        return candidate
+      endif
+    endfor
+  endif
   return ''
 endfunction
 
