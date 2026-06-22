@@ -205,7 +205,7 @@ function! goime#connect()
       else
         let ch = ch_open('unix:' . socket_path, {'mode': 'raw', 'timeout': 2000})
       endif
-      if ch > 0
+      if type(ch) != v:t_number || ch > 0
         let s:channel = ch
         let s:connected = 1
         call ch_setoptions(ch, {'callback': 'goime#_on_channel_data'})
