@@ -173,33 +173,97 @@ function! goime#connect()
   endtry
 endfunction
 
-" goime#_connect_tcp TCP 连接 goimed
-function! goime#_connect_tcp()
-  let host = g:goime_host
-  let port = g:goime_port
-  let addr = host . ":" . port
+" goime#_read_port_file 读取端口文件 ~/.cache/goime/goime.port
+function! goime#_read_port_file()
+  let home = expand('$HOME')
+  if home ==# ''
+    let home = expand('$USERPROFILE')
+  endif
+  if home ==# '' | return 0 | endif
+  let path = home . '/.cache/goime/goime.port'
+  if filereadable(path)
+    let lines = readfile(path)
+    if len(lines) > 0
+      return str2nr(lines[0])
+    endif
+  endif
+  return 0
+endfunction
+
+" goime#_try_tcp_connect 尝试 TCP 连接，成功则初始化
+function! goime#_try_tcp_connect(host, port)
+  let addr = a:host . ":" . a:port
   try
     if has("nvim")
-      return
+      return 0
     endif
     if exists("*sockconnect")
       let ch = sockconnect("tcp", addr, {"mode": "raw"})
+      if ch == 0 | return 0 | endif
     else
-      let ch = ch_open("tcp:" . addr, {"mode": "raw", "timeout": 2000})
-      if type(ch) == v:t_number && ch == 0
-        call goime#_log("TCP 连接 goimed 失败")
-        return
-      endif
+      let ch = ch_open("tcp:" . addr, {"mode": "raw", "timeout": 1000})
+      if type(ch) == v:t_number && ch == 0 | return 0 | endif
     endif
     let s:channel = ch
     let s:connected = 1
     call ch_setoptions(ch, {"callback": "goime#_on_channel_data"})
     call goime#_log("已连接 goimed (TCP " . addr . ")")
     call goime#_send_hello()
+    return 1
   catch
-    call goime#_log("TCP 连接异常: " . v:exception)
-    let s:connected = 0
+    return 0
   endtry
+endfunction
+
+" goime#_connect_tcp TCP 连接（含自动发现：直接连接 -> 端口文件 -> 自动启动）
+function! goime#_connect_tcp()
+  let host = g:goime_host
+  let port = g:goime_port
+
+  " 1. 尝试配置的端口
+  if goime#_try_tcp_connect(host, port)
+    return
+  endif
+
+  " 2. 读取端口文件，尝试其端口
+  let pf = goime#_read_port_file()
+  if pf > 0 && pf != port
+    if goime#_try_tcp_connect(host, pf)
+      return
+    endif
+  endif
+
+  " 3. 自动启动 goimed
+  let binary = goime#_find_binary()
+  if binary ==# ''
+    call goime#_log("goimed 未找到，请先安装")
+    return
+  endif
+  call goime#_log("正在启动 goimed (TCP :" . port . ")")
+  if has('job')
+    call job_start([binary, "--listen", "tcp", "--port", port], {'out_cb': {_, data -> goime#_log(data)}})
+  else
+    call system(binary . ' --listen tcp --port ' . port . ' &')
+  endif
+
+  " 4. 延迟重试连接
+  let s:tcp_retries = 0
+  call timer_start(500, {_ -> goime#_retry_tcp(host, port)})
+endfunction
+
+" goime#_retry_tcp 等待 goimed 启动后重试连接
+function! goime#_retry_tcp(host, port)
+  if goime#_try_tcp_connect(a:host, a:port)
+    let s:tcp_retries = 0
+    return
+  endif
+  let s:tcp_retries += 1
+  if s:tcp_retries < 12
+    call timer_start(500, {_ -> goime#_retry_tcp(a:host, a:port)})
+  else
+    call goime#_log("goimed TCP 启动超时")
+    let s:tcp_retries = 0
+  endif
 endfunction
 " goime#_connect_retry 等待 socket 就绪后重试连接
 function! goime#_connect_retry(socket_path)
