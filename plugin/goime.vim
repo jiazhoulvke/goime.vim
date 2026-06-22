@@ -40,7 +40,7 @@ let g:goime_toggle_key = get(g:, 'goime_toggle_key', '<S-Space>')
 let g:goime_ascii_punct = get(g:, 'goime_ascii_punct', 1)
 
 " 是否自动在插入模式连接 GoIME（1=自动，0=手动）
-let g:goime_auto_connect = get(g:, 'goime_auto_connect', 1)
+let g:goime_auto_connect = get(g:, 'goime_auto_connect', 0)
 
 " 客户端标识
 let g:goime_client_name = get(g:, 'goime_client_name', 'vim-goime-0.1')
