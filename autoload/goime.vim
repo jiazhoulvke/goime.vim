@@ -108,6 +108,7 @@ function! goime#_json_decode(str)
     try
       return json_decode(a:str)
     catch
+      call goime#_log('JSON 解析失败：' . v:exception . ' | ' . a:str)
       return {}
     endtry
   endif
@@ -309,6 +310,7 @@ function! goime#_try_tcp_connect(host, port)
     call goime#_send_hello()
     return 1
   catch
+    call goime#_log('TCP 连接异常：' . v:exception)
     return 0
   endtry
 endfunction
@@ -644,6 +646,7 @@ function! goime#_close_popup()
     try
       call popup_close(s:popup_win)
     catch
+      call goime#_log('popup_close 异常：' . v:exception)
     endtry
     let s:popup_win = -1
   endif
@@ -1030,7 +1033,7 @@ function! goime#_debug_dump()
             echom '    candidates: none'
           endif
         catch
-          echom '  parse error: ' . line
+          echom '  parse error: ' . v:exception . ' | ' . line
         endtry
       endif
     endfor
