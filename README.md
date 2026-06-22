@@ -24,6 +24,9 @@ set rtp+=~/workspace/vim/goime.vim
 " 是否默认启用插件（0=禁用，1=启用）。按 <C-;> 或 :GoIMEToggleEnabled 启用
 let g:goime_enabled = 0
 
+" 默认中文模式（1=中文，0=英文；启用插件后立即生效）
+let g:goime_default_chinese = 1
+
 " Socket 路径（空=自动推导，设置端口号后自动切换到 TCP 模式）
 let g:goime_socket_path = ''
 
