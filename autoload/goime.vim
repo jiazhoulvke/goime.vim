@@ -144,7 +144,7 @@ function! goime#connect()
     " 快速测试 socket 是否有效
     if exists('*sockconnect')
       let test_ch = sockconnect('unix', socket_path, {'mode': 'raw', 'timeout': 100})
-      if test_ch > 0
+      if type(test_ch) != v:t_number || test_ch > 0
         call ch_close(test_ch)
       else
         " Socket 无效（残留），删除并重新启动
@@ -408,10 +408,15 @@ endfunction
 " goime#disconnect 断开连接
 function! goime#disconnect()
   if s:connected
-    call ch_close(s:channel)
+    try
+      call ch_close(s:channel)
+    catch
+      call goime#_log('ch_close 异常：' . v:exception)
+    endtry
   endif
   let s:channel = v:null
   let s:connected = 0
+  let s:buffer = ''
   call goime#_close_popup()
 endfunction
 
@@ -425,7 +430,15 @@ function! goime#_send(msg)
     return
   endif
   let json = goime#_json_encode(a:msg)
-  call ch_sendraw(s:channel, json . "\n")
+  try
+    call ch_sendraw(s:channel, json . "\n")
+  catch
+    call goime#_log('ch_sendraw 异常：' . v:exception . '，断开连接')
+    let s:connected = 0
+    let s:channel = v:null
+    let s:buffer = ''
+    call goime#_close_popup()
+  endtry
 endfunction
 
 " goime#_send_hello 发送握手消息
@@ -547,7 +560,7 @@ function! s:handle_commit(resp)
   " 处理 pending_key — 需要透传的后续字符
   let pending = get(a:resp, 'pending_key', '')
   if pending !=# ''
-    call feedkeys(pending, 'n')
+    call feedkeys(goime#_escape_feedkeys(pending), 'nt')
   endif
 endfunction
 
@@ -709,46 +722,98 @@ function! s:setup_insert_mappings()
     return
   endif
 
-  " 字母键映射到 goime
+  " 保存并设置字母键映射
   for c in split('abcdefghijklmnopqrstuvwxyz', '\zs')
+    let existing = maparg(c, 'i', 0, 1)
+    if !empty(existing)
+      let s:saved_maps[c] = existing
+    endif
     execute 'inoremap <silent> <expr> ' . c . ' goime#_on_char("' . c . '")'
   endfor
 
-  " 数字键 1-0 选词（0=索引9）
+  " 保存并设置数字键 1-0 选词（0=索引9）
   for i in range(1, 9)
-    execute 'inoremap <silent> <expr> ' . i . ' goime#_on_number(''' . i . ''')'
+    let key = string(i)
+    let existing = maparg(key, 'i', 0, 1)
+    if !empty(existing)
+      let s:saved_maps[key] = existing
+    endif
+    execute 'inoremap <silent> <expr> ' . key . ' goime#_on_number(''' . key . ''')'
   endfor
-  " 0 键选第 10 个候选（索引 9）
+  let existing = maparg('0', 'i', 0, 1)
+  if !empty(existing)
+    let s:saved_maps['0'] = existing
+  endif
   inoremap <silent> <expr> 0 goime#_on_number('10')
 
-  " 翻页 + 特殊键（支持用户自定义映射）
-  execute 'inoremap <silent> <expr> ' . g:goime_map_page_prev . ' goime#_on_comma()'
-  execute 'inoremap <silent> <expr> ' . g:goime_map_page_next . ' goime#_on_period()'
-  execute 'inoremap <silent> <expr> ' . g:goime_map_space . ' goime#_on_space()'
-  execute 'inoremap <silent> <expr> ' . g:goime_map_backspace . ' goime#_on_backspace()'
-  execute 'inoremap <silent> <expr> ' . g:goime_map_enter . ' goime#_on_enter()'
-  execute 'inoremap <silent> <expr> ' . g:goime_map_escape . ' goime#_on_escape()'
-  execute 'inoremap <silent> <expr> ' . g:goime_map_tab . ' goime#_on_tab()'
+  " 保存并设置翻页 + 特殊键
+  for [gkey, fn] in [
+        \ [g:goime_map_page_prev, 'goime#_on_comma()'],
+        \ [g:goime_map_page_next, 'goime#_on_period()'],
+        \ [g:goime_map_space, 'goime#_on_space()'],
+        \ [g:goime_map_backspace, 'goime#_on_backspace()'],
+        \ [g:goime_map_enter, 'goime#_on_enter()'],
+        \ [g:goime_map_escape, 'goime#_on_escape()'],
+        \ [g:goime_map_tab, 'goime#_on_tab()'],
+        \ ]
+    let existing = maparg(gkey, 'i', 0, 1)
+    if !empty(existing)
+      let s:saved_maps[gkey] = existing
+    endif
+    execute 'inoremap <silent> <expr> ' . gkey . ' ' . fn
+  endfor
 endfunction
 
 " s:restore_insert_mappings 恢复插入模式映射
 function! s:restore_insert_mappings()
   for c in split('abcdefghijklmnopqrstuvwxyz', '\zs')
     silent! execute 'iunmap ' . c
+    if has_key(s:saved_maps, c)
+      call s:restore_map(c)
+    endif
   endfor
-  execute 'silent! iunmap ' . g:goime_map_space
-  execute 'silent! iunmap ' . g:goime_map_backspace
-  execute 'silent! iunmap ' . g:goime_map_enter
-  execute 'silent! iunmap ' . g:goime_map_escape
-  execute 'silent! iunmap ' . g:goime_map_tab
+  for key in [g:goime_map_space, g:goime_map_backspace, g:goime_map_enter, g:goime_map_escape, g:goime_map_tab, g:goime_map_page_prev, g:goime_map_page_next]
+    silent! execute 'iunmap ' . key
+    if has_key(s:saved_maps, key)
+      call s:restore_map(key)
+    endif
+  endfor
   " 数字键 1-0
   for i in range(1, 9)
-    silent! execute 'iunmap ' . i
+    let key = string(i)
+    silent! execute 'iunmap ' . key
+    if has_key(s:saved_maps, key)
+      call s:restore_map(key)
+    endif
   endfor
   silent! iunmap 0
-  " 翻页
-  execute 'silent! iunmap ' . g:goime_map_page_prev
-  execute 'silent! iunmap ' . g:goime_map_page_next
+  if has_key(s:saved_maps, '0')
+    call s:restore_map('0')
+  endif
+  " 清空保存的映射
+  let s:saved_maps = {}
+endfunction
+
+" s:restore_map 恢复单个映射
+function! s:restore_map(key)
+  let saved = s:saved_maps[a:key]
+  let cmd = 'inoremap'
+  if get(saved, 'noremap', 0)
+    let cmd = 'inoremap'
+  endif
+  if get(saved, 'silent', 0)
+    let cmd .= ' <silent>'
+  endif
+  if get(saved, 'expr', 0)
+    let cmd .= ' <expr>'
+  endif
+  if get(saved, 'buffer', 0)
+    let cmd .= ' <buffer>'
+  endif
+  let rhs = get(saved, 'rhs', '')
+  if rhs !=# ''
+    execute cmd . ' ' . a:key . ' ' . rhs
+  endif
 endfunction
 
 " ============================================================================
