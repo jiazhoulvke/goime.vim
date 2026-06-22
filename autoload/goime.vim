@@ -172,7 +172,11 @@ function! goime#connect()
         call goime#_log('连接 goimed 失败')
         call delete(socket_path)
         if goime#_start_goimed(socket_path)
-          let ch = sockconnect('unix', socket_path, {'mode': 'raw'})
+          if exists('*sockconnect')
+            let ch = sockconnect('unix', socket_path, {'mode': 'raw'})
+          else
+            let ch = ch_open('unix:' . socket_path, {'mode': 'raw', 'timeout': 2000})
+          endif
         endif
         if ch == 0
           let s:connected = 0
@@ -196,7 +200,11 @@ function! goime#connect()
     " 连接被拒绝，socket 可能残留
     call delete(socket_path)
     if goime#_start_goimed(socket_path)
-      let ch = sockconnect('unix', socket_path, {'mode': 'raw'})
+      if exists('*sockconnect')
+        let ch = sockconnect('unix', socket_path, {'mode': 'raw'})
+      else
+        let ch = ch_open('unix:' . socket_path, {'mode': 'raw', 'timeout': 2000})
+      endif
       if ch > 0
         let s:channel = ch
         let s:connected = 1
