@@ -201,7 +201,7 @@ function! goime#_try_tcp_connect(host, port)
       let ch = sockconnect("tcp", addr, {"mode": "raw"})
       if ch == 0 | return 0 | endif
     else
-      let ch = ch_open("tcp:" . addr, {"mode": "raw", "timeout": 1000})
+      let ch = ch_open(addr, {"mode": "raw", "timeout": 1000})
       if type(ch) == v:t_number && ch == 0 | return 0 | endif
     endif
     let s:channel = ch
