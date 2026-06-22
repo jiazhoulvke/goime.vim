@@ -241,9 +241,9 @@ function! goime#_connect_tcp()
   endif
   call goime#_log("正在启动 goimed (TCP :" . port . ")")
   if has('job')
-    call job_start([binary, "--listen", "tcp", "--port", port], {'out_cb': {_, data -> goime#_log(data)}})
+    call job_start([binary, "--listen", "tcp", "--host", g:goime_host, "--port", port], {'out_cb': {_, data -> goime#_log(data)}})
   else
-    call system(binary . ' --listen tcp --port ' . port . ' &')
+    call system(binary . " --listen tcp --host " . g:goime_host . " --port " . port . " &")
   endif
 
   " 4. 延迟重试连接
