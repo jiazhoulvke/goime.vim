@@ -157,6 +157,8 @@ function! goime#connect()
   " Socket 不存在时启动 goimed
   if !goime#_socket_exists(socket_path)
     if !goime#_start_goimed(socket_path)
+      " 超时后异步重试（goimed 可能正在加载词典）
+      call timer_start(1000, {_ -> goime#_connect_retry(socket_path)})
       return
     endif
   endif
@@ -220,8 +222,8 @@ function! goime#connect()
   endtry
 endfunction
 
-" goime#_start_goimed 启动 goimed 并等待 socket 就绪（最多 3s）
-" 成功返回 1，超时返回 0
+" goime#_start_goimed 启动 goimed 并等待 socket 就绪
+" 成功返回 1，超时返回 0（调用方应按需重试）
 function! goime#_start_goimed(socket_path)
   let binary = goime#_find_binary()
   if binary ==# ''
@@ -230,9 +232,9 @@ function! goime#_start_goimed(socket_path)
   endif
   call goime#_log('正在启动 goimed...')
   call system(binary . ' >/dev/null 2>&1 &')
-  " 等待 socket 就绪（最多 3s）
+  " 等待 socket 就绪（最多 8s，首次启动需加载词典）
   let waited = 0
-  while !goime#_socket_exists(a:socket_path) && waited < 3000
+  while !goime#_socket_exists(a:socket_path) && waited < 8000
     sleep 100m
     let waited += 100
   endwhile
