@@ -772,6 +772,31 @@ function! s:setup_insert_mappings()
     endif
     execute 'inoremap <silent> <expr> ' . gkey . ' ' . fn
   endfor
+
+  " 标点符号全角映射（, . 已在上方翻页映射中处理）
+  for [ascii, fullwidth] in items(g:goime_punct_map)
+    if ascii ==# g:goime_map_page_prev || ascii ==# g:goime_map_page_next
+      continue
+    endif
+    " 引号使用配对切换逻辑，跳过
+    if ascii ==# '"' || ascii ==# "'"
+      continue
+    endif
+    let existing = maparg(ascii, 'i', 0, 1)
+    if !empty(existing)
+      let s:saved_maps[ascii] = existing
+    endif
+    execute printf('inoremap <silent> <expr> %s goime#_on_punct(%s, %s)', ascii, string(ascii), string(fullwidth))
+  endfor
+
+  " 引号配对映射
+  for ascii in ['"', "'"]
+    let existing = maparg(ascii, 'i', 0, 1)
+    if !empty(existing)
+      let s:saved_maps[ascii] = existing
+    endif
+    execute printf('inoremap <silent> <expr> %s goime#_on_quote(%s)', ascii, string(ascii))
+  endfor
 endfunction
 
 " s:restore_insert_mappings 恢复插入模式映射
@@ -800,6 +825,16 @@ function! s:restore_insert_mappings()
   if has_key(s:saved_maps, '0')
     call s:restore_map('0')
   endif
+  " 标点符号键
+  for ascii in keys(g:goime_punct_map)
+    if ascii ==# g:goime_map_page_prev || ascii ==# g:goime_map_page_next
+      continue
+    endif
+    silent! execute 'iunmap ' . ascii
+    if has_key(s:saved_maps, ascii)
+      call s:restore_map(ascii)
+    endif
+  endfor
   " 清空保存的映射
   let s:saved_maps = {}
 endfunction
@@ -1020,20 +1055,26 @@ endfunction
 
 " goime#_on_comma 处理逗号键（向上翻页）
 function! goime#_on_comma()
-  if !s:connected || !s:chinese_mode || s:preedit_text ==# ''
+  if !s:connected || !s:chinese_mode
     return ','
   endif
-  call goime#_send_page('prev')
-  return ''
+  if s:preedit_text !=# ''
+    call goime#_send_page('prev')
+    return ''
+  endif
+  return g:goime_ascii_punct ? ',' : get(g:goime_punct_map, ',', ',')
 endfunction
 
 " goime#_on_period 处理句号键（向下翻页）
 function! goime#_on_period()
-  if !s:connected || !s:chinese_mode || s:preedit_text ==# ''
+  if !s:connected || !s:chinese_mode
     return '.'
   endif
-  call goime#_send_page('next')
-  return ''
+  if s:preedit_text !=# ''
+    call goime#_send_page('next')
+    return ''
+  endif
+  return g:goime_ascii_punct ? '.' : get(g:goime_punct_map, '.', '.')
 endfunction
 
 " ============================================================================
@@ -1042,13 +1083,35 @@ endfunction
 
 " goime#_on_punct 处理标点符号
 function! goime#_on_punct(char, fullwidth)
-  if !s:connected || !s:chinese_mode
+  if !s:plugin_enabled || !s:connected || !s:chinese_mode
     return a:char
   endif
   if g:goime_ascii_punct
     return a:char
   endif
   return a:fullwidth
+endfunction
+
+" 引号配对状态（0=下次输出左引号，1=下次输出右引号）
+let s:quote_double = 0
+let s:quote_single = 0
+
+" goime#_on_quote 处理引号（左右切换）
+function! goime#_on_quote(char)
+  if !s:plugin_enabled || !s:connected || !s:chinese_mode
+    return a:char
+  endif
+  if g:goime_ascii_punct
+    return a:char
+  endif
+  let left = get(g:goime_punct_map, a:char, a:char)
+  let right = a:char ==# '"' ? '”' : '’'
+  if a:char ==# '"'
+    let s:quote_double = !s:quote_double
+    return s:quote_double ? left : right
+  endif
+  let s:quote_single = !s:quote_single
+  return s:quote_single ? left : right
 endfunction
 
 " ============================================================================

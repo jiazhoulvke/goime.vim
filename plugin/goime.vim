@@ -36,8 +36,28 @@ let g:goime_status_off = get(g:, 'goime_status_off', '')
 " 中/英文切换键（默认 <S-Space>，右 Shift 等效；终端下无法区分左右 Shift）
 let g:goime_toggle_key = get(g:, 'goime_toggle_key', '<S-Space>')
 
-" 中/英标点模式（1=中文标点，0=英文标点）
-let g:goime_ascii_punct = get(g:, 'goime_ascii_punct', 1)
+" 中/英标点模式（0=中文标点，1=英文标点，设为 1 无视 punct_map）
+let g:goime_ascii_punct = get(g:, 'goime_ascii_punct', 0)
+
+" 标点映射表（ASCII → 全角），用户可增删改
+let g:goime_punct_map = get(g:, 'goime_punct_map', {
+      \ ',': '，',
+      \ '.': '。',
+      \ ';': '；',
+      \ ':': '：',
+      \ '<': '《',
+      \ '>': '》',
+      \ '?': '？',
+      \ '!': '！',
+      \ '(': '（',
+      \ ')': '）',
+      \ '/': '、',
+      \ '\': '、',
+      \ '[': '【',
+      \ ']': '】',
+      \ "'": '‘',
+      \ '"': '“',
+      \ })
 
 " 是否自动在插入模式连接 GoIME（1=自动，0=手动）
 let g:goime_auto_connect = get(g:, 'goime_auto_connect', 0)
