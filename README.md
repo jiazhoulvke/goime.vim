@@ -48,8 +48,17 @@ let g:goime_schemes = []
 " 自动连接（1=进入插入模式自动连接，0=手动）
 let g:goime_auto_connect = 0
 
-" 中/英标点模式（1=中文标点，0=英文标点）
-let g:goime_ascii_punct = 1
+" 中/英标点模式（0=中文标点，1=英文标点）
+let g:goime_ascii_punct = 0
+
+" 标点映射表（ASCII → 全角），可增删改
+let g:goime_punct_map = {
+      \ ',': '，', '.': '。', ';': '；', ':': '：',
+      \ '<': '《', '>': '》', '?': '？', '!': '！',
+      \ '(': '（', ')': '）', '/': '、', '\': '、',
+      \ '[': '【', ']': '】',
+      \ "'": '‘', '"': '“',
+      \ }
 
 " 客户端标识
 let g:goime_client_name = 'vim-goime-0.1'
@@ -139,6 +148,21 @@ let g:goime_no_default_mappings = 1
 ```
 
 设置后，除 `<S-Space>`（中/英切换）和 `<M-;>`（启/禁用）外，所有插入模式映射都不会自动创建，你可通过自定义变量或 `inoremap` 手动配置。
+
+### 中文标点符号
+
+中文模式下，标点自动转换为全角。可通过 `g:goime_punct_map` 自定义映射，`g:goime_ascii_punct` 设为 `1` 关闭。
+
+```vim
+" 默认映射
+let g:goime_punct_map = { ',': '，', '.': '。', '/': '、', ... }
+
+" 自定义
+let g:goime_punct_map['"'] = '"'   " 双引号不转换
+call remove(g:goime_punct_map, '/') " 删除斜线映射
+```
+
+引号支持左右配对：第一次输入 `"` 输出 `"`，第二次输出 `"`。单引号同理 `' → ''`。
 
 ## 候选窗
 
