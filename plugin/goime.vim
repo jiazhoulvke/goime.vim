@@ -128,8 +128,13 @@ command! GoIMESchemePrev call goime#cycle_scheme(-1)
 " ============================================================================
 
 " 中/英文切换（默认 <S-Space>，右 Shift 等效）
-execute 'inoremap <silent> ' . g:goime_toggle_key . ' <C-\><C-N>:call goime#toggle()<CR>a'
-execute 'inoremap <silent> ' . g:goime_map_toggle_enable . ' <C-\><C-N>:call goime#toggle_enabled()<CR>a'
+if has('patch-8.2.1978')
+  execute 'inoremap <silent> ' . g:goime_toggle_key . ' <Cmd>call goime#toggle()<CR>'
+  execute 'inoremap <silent> ' . g:goime_map_toggle_enable . ' <Cmd>call goime#toggle_enabled()<CR>'
+else
+  execute 'inoremap <silent> ' . g:goime_toggle_key . ' <C-\><C-N>:call goime#toggle()<CR>a'
+  execute 'inoremap <silent> ' . g:goime_map_toggle_enable . ' <C-\><C-N>:call goime#toggle_enabled()<CR>a'
+endif
 
 " 右 Shift → 中/英文切换（在能区分左右 Shift 的终端/GVim 下生效）
 " 大多数终端无法区分左右 Shift，已通过 g:goime_toggle_key（默认 <S-Space>）提供等效功能
