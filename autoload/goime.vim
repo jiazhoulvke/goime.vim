@@ -690,6 +690,12 @@ function! goime#on_insert_enter()
   endif
   let s:prev_insert_mode = 1
 
+  " 非普通 buffer 不设置映射（避免干扰 telescope/fzf 等插件）
+  let bt = &buftype
+  if bt !=# '' && bt !=# 'acwrite'
+    return
+  endif
+
   " auto_connect 时自动连接 goimed
   if g:goime_auto_connect && !s:connected
     call goime#connect()
