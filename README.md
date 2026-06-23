@@ -21,23 +21,23 @@ set rtp+=~/workspace/vim/goime.vim
 ## 配置
 
 ```vim
-" 是否默认启用插件（0=禁用，1=启用）。按 <C-;> 或 :GoIMEToggleEnabled 启用
+" 是否默认启用插件（0=禁用，1=启用）。按 <M-;> 或 :GoIMEToggleEnabled 启用
 let g:goime_enabled = 0
 
 " 默认中文模式（1=中文，0=英文；启用插件后立即生效）
 let g:goime_default_chinese = 1
 
-" Socket 路径（空=自动推导，设置端口号后自动切换到 TCP 模式）
+" Socket 路径（空=自动推导，仅 Unix socket 模式下使用）
 let g:goime_socket_path = ''
 
 " goimed 可执行文件路径（空=从 PATH 查找）
 let g:goime_binary = ''
 
-" TCP 连接地址（仅端口号非空时生效）
+" TCP 连接地址
 let g:goime_host = '127.0.0.1'
 
-" TCP 端口（空=使用 Unix Socket，设值后自动切换到 TCP 模式）
-let g:goime_port = ''
+" TCP 端口（默认 11527，设为空则使用 Unix Socket 模式）
+let g:goime_port = '11527'
 
 " 每页候选数
 let g:goime_page_size = 5
@@ -99,7 +99,7 @@ let g:goime_debug = 0
 | 键 | 功能 | 可自定义变量 |
 |---|---|---|
 | `<S-Space>` | 中/英文切换 | `g:goime_toggle_key` |
-| `<C-;>` | 启用/禁用插件 | `g:goime_map_toggle_enable` |
+| `<M-;>` | 启用/禁用插件 | `g:goime_map_toggle_enable` |
 
 ### 自定义映射键
 
@@ -114,7 +114,7 @@ let g:goime_map_backspace = '<BS>'                 " 回删拼音
 let g:goime_map_enter = '<CR>'                     " 上屏
 let g:goime_map_escape = '<Esc>'                   " 清空拼音
 let g:goime_map_tab = '<Tab>'                     " 选第二个候选
-let g:goime_map_toggle_enable = '<C-;>'            " 启用/禁用插件
+let g:goime_map_toggle_enable = '<M-;>'            " 启用/禁用插件
 
 " 例如改为 [ 和 ] 翻页
 let g:goime_map_page_prev = '['
@@ -138,12 +138,17 @@ inoremap <PageUp> <C-\><C-O>:call goime#_on_pageup()<CR>
 let g:goime_no_default_mappings = 1
 ```
 
-设置后，除 `<S-Space>`（中/英切换）和 `<C-;>`（启/禁用）外，所有插入模式映射都不会自动创建，你可通过自定义变量或 `inoremap` 手动配置。
+设置后，除 `<S-Space>`（中/英切换）和 `<M-;>`（启/禁用）外，所有插入模式映射都不会自动创建，你可通过自定义变量或 `inoremap` 手动配置。
 
 ## 候选窗
 
-goime.vim 使用 Vim 弹出窗口（popup window）显示候选词。窗口样式：
-- 圆角边框
+goime.vim 使用 Vim 弹出窗口（popup window）显示候选词。默认使用 ASCII 字符边框，兼容性好。如安装了 Nerd Font，可启用圆角边框：
+
+```vim
+let g:goime_nerdfont_border = 1
+```
+
+窗口样式：
 - 第一行显示正在输入的拼音（preedit）
 - 候选词编号显示，如 `1. 你 [ni3]`
 - 多页时显示 `— 1/3页 —`
@@ -220,12 +225,10 @@ let g:lightline = {
 
 ## TCP 支持
 
-goime.vim 支持 TCP 连接。配置 `g:goime_port` 即可自动切换到 TCP 模式：
+默认使用 TCP 连接（端口 11527）。如需使用 Unix Socket 模式，将 `g:goime_port` 设为空：
 
 ```vim
-let g:goime_port = 11527
-" 可自定义主机地址（默认 127.0.0.1）
-let g:goime_host = '127.0.0.1'
+let g:goime_port = ''
 ```
 
 ### TCP 自动发现链

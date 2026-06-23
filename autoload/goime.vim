@@ -127,7 +127,9 @@ endfunction
 " ============================================================================
 
 " goime#connect 连接到 goimed 守护进程
+" 显式连接即表示启用插件
 function! goime#connect()
+  let s:plugin_enabled = 1
   " TCP 模式（配置了 goime_port）
   if g:goime_port !=# ""
     call goime#_connect_tcp()
@@ -175,7 +177,7 @@ function! goime#connect()
       endif
       if exists('*sockconnect')
         let ch = sockconnect('unix', socket_path, {'mode': 'raw'})
-        if type(ch) == v:t_number && ch == 0
+        if type(ch) == v:t_number && ch == 0 || ch_status(ch) !=# 'open'
           call goime#_log('sockconnect 失败，尝试 ' . attempts)
           if goime#_socket_exists(socket_path)
             call delete(socket_path)
@@ -184,13 +186,13 @@ function! goime#connect()
             break
           endif
           let ch = sockconnect('unix', socket_path, {'mode': 'raw'})
-          if type(ch) == v:t_number && ch == 0
+          if type(ch) == v:t_number && ch == 0 || ch_status(ch) !=# 'open'
             break
           endif
         endif
       else
         let ch = ch_open('unix:' . socket_path, {'mode': 'raw', 'timeout': 2000})
-        if type(ch) == v:t_number && ch == 0
+        if type(ch) == v:t_number && ch == 0 || ch_status(ch) !=# 'open'
           call goime#_log('ch_open 失败，尝试 ' . attempts)
           if goime#_socket_exists(socket_path)
             call delete(socket_path)
@@ -199,7 +201,7 @@ function! goime#connect()
             break
           endif
           let ch = ch_open('unix:' . socket_path, {'mode': 'raw', 'timeout': 2000})
-          if type(ch) == v:t_number && ch == 0
+          if type(ch) == v:t_number && ch == 0 || ch_status(ch) !=# 'open'
             break
           endif
         endif
@@ -222,7 +224,7 @@ function! goime#connect()
           else
             let ch = ch_open('unix:' . socket_path, {'mode': 'raw', 'timeout': 2000})
           endif
-          if type(ch) != v:t_number || ch > 0
+          if (type(ch) != v:t_number || ch > 0) && ch_status(ch) ==# 'open'
             let s:channel = ch
             let s:connected = 1
             let connected = 1
@@ -303,11 +305,16 @@ function! goime#_try_tcp_connect(host, port)
       let ch = ch_open(addr, {"mode": "raw", "timeout": 1000})
       if type(ch) == v:t_number && ch == 0 | return 0 | endif
     endif
+    if ch_status(ch) !=# 'open' | return 0 | endif
     let s:channel = ch
     let s:connected = 1
     call ch_setoptions(ch, {"callback": "goime#_on_channel_data"})
     call goime#_log("已连接 goimed (TCP " . addr . ")")
     call goime#_send_hello()
+    " 连接成功后，若插件已启用且处于中文模式且在插入模式中，设置映射
+    if s:plugin_enabled && s:chinese_mode && mode() =~# 'i'
+      call s:setup_insert_mappings()
+    endif
     return 1
   catch
     call goime#_log('TCP 连接异常：' . v:exception)
@@ -380,7 +387,7 @@ function! goime#_connect_retry(socket_path)
   " 连接
   if exists('*sockconnect')
     let ch = sockconnect('unix', a:socket_path, {'mode': 'raw'})
-    if type(ch) != v:t_number || ch != 0
+    if (type(ch) != v:t_number || ch != 0) && ch_status(ch) ==# 'open'
       let s:channel = ch
       let s:connected = 1
       call ch_setoptions(ch, {'callback': 'goime#_on_channel_data'})
@@ -392,7 +399,7 @@ function! goime#_connect_retry(socket_path)
     endif
   else
     let ch = ch_open('unix:' . a:socket_path, {'mode': 'raw', 'timeout': 2000})
-    if type(ch) != v:t_number || ch != 0
+    if (type(ch) != v:t_number || ch != 0) && ch_status(ch) ==# 'open'
       let s:channel = ch
       let s:connected = 1
       call ch_setoptions(ch, {'callback': 'goime#_on_channel_data'})
@@ -642,12 +649,14 @@ function! s:show_candidates(preedit_text, list)
       call popup_settext(s:popup_win, lines)
     else
       call goime#_close_popup()
-      let s:popup_win = popup_atcursor(lines, {
+      let borders = g:goime_nerdfont_border
+            \ ? {'border': [1,1,1,1], 'borderchars': ['─','│','─','│','╭','╮','╯','╰']}
+            \ : {'border': [1,1,1,1], 'borderchars': ['-','|','-','|','+','+','+','+']}
+      let s:popup_win = popup_atcursor(lines, extend(borders, {
             \ 'padding': [0, 1, 0, 1],
-            \ 'border': [],
             \ 'close': 'click',
             \ 'highlight': 'GoIMECandidate',
-            \ })
+            \ }))
     endif
     highlight default link GoIMECandidate Pmenu
   endif
@@ -669,7 +678,7 @@ endfunction
 " 插入模式事件
 " ============================================================================
 
-" goime#on_insert_enter 进入插入模式时连接
+" goime#on_insert_enter 进入插入模式时设置映射（并可选自动连接）
 function! goime#on_insert_enter()
   " 如果插件被禁用，不做任何事
   if !s:plugin_enabled
@@ -681,7 +690,8 @@ function! goime#on_insert_enter()
   endif
   let s:prev_insert_mode = 1
 
-  if !s:connected
+  " auto_connect 时自动连接 goimed
+  if g:goime_auto_connect && !s:connected
     call goime#connect()
   endif
 
@@ -1042,30 +1052,43 @@ function! goime#_on_punct(char, fullwidth)
 endfunction
 
 " ============================================================================
-" 插件启/禁用（<C-;> 调用）
+" 插件启/禁用（<M-;> 调用）
 " ============================================================================
 
 let s:plugin_enabled = get(g:, 'goime_enabled', 0)  " 1=启用，0=禁用（默认禁用）
 
-" goime#toggle_enabled 切换插件启用/禁用状态
-function! goime#toggle_enabled()
-  let s:plugin_enabled = !s:plugin_enabled
-  if s:plugin_enabled
-    call goime#_log('GoIME 已启用')
-    if !s:connected
-      call goime#connect()
-    endif
-    if s:chinese_mode
-      call s:setup_insert_mappings()
-    endif
-    echohl Statement | echo 'GoIME: 已启用' | echohl None
-  else
-    call goime#_log('GoIME 已禁用')
-    call s:restore_insert_mappings()
-    call goime#_close_popup()
-    echohl Comment | echo 'GoIME: 已禁用' | echohl None
+" goime#enable 启用插件（连接 + 设置映射）
+function! goime#enable()
+  let s:plugin_enabled = 1
+  call goime#_log('GoIME 已启用')
+  if !s:connected
+    call goime#connect()
+  endif
+  " 设置映射（即使尚未连接，_on_char 会处理未连接的情况）
+  if s:chinese_mode
+    call s:setup_insert_mappings()
   endif
   call goime#_update_statusline()
+  echohl Statement | echo 'GoIME: 已启用' | echohl None
+endfunction
+
+" goime#disable 禁用插件
+function! goime#disable()
+  let s:plugin_enabled = 0
+  call goime#_log('GoIME 已禁用')
+  call s:restore_insert_mappings()
+  call goime#_close_popup()
+  call goime#_update_statusline()
+  echohl Comment | echo 'GoIME: 已禁用' | echohl None
+endfunction
+
+" goime#toggle_enabled 切换插件启用/禁用状态
+function! goime#toggle_enabled()
+  if s:plugin_enabled
+    call goime#disable()
+  else
+    call goime#enable()
+  endif
 endfunction
 
 " ============================================================================

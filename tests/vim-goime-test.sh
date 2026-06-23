@@ -58,7 +58,7 @@ echo "socket:    ${GOIME_SOCKET}"
 echo "vimrc:     ${VIMRC}"
 echo ""
 echo "可用命令：:GoIMEConnect / :GoIMEToggle / :GoIMEStatus / :GoIMEToggleEnabled"
-echo "按键：<S-Space> 中英切换, <C-;> 启用/禁用, ,/. 翻页, 1-0 选词"
+echo "按键：<S-Space> 中英切换, <M-;> 启用/禁用, ,/. 翻页, 1-0 选词"
 echo ""
 
 exec vim -u "${VIMRC}" "${@}"

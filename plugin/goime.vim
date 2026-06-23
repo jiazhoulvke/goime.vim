@@ -21,8 +21,8 @@ let g:goime_binary = get(g:, 'goime_binary', '')
 " TCP 主机地址（仅 TCP 模式有效，需同时设置 goime_port）
 let g:goime_host = get(g:, 'goime_host', '127.0.0.1')
 
-" TCP 端口，设置后启用 TCP 连接（空=使用 Unix socket）
-let g:goime_port = get(g:, 'goime_port', '')
+" TCP 端口（默认 11527，设为空则使用 Unix socket）
+let g:goime_port = get(g:, 'goime_port', '11527')
 
 " 中文模式状态栏显示文本
 let g:goime_status_cn = get(g:, 'goime_status_cn', '中')
@@ -54,6 +54,9 @@ let g:goime_schemes = get(g:, 'goime_schemes', [])
 " 禁用所有默认按键映射
 let g:goime_no_default_mappings = get(g:, 'goime_no_default_mappings', 0)
 
+" Nerd Font 边框（1=启用，0=ASCII 字符）
+let g:goime_nerdfont_border = get(g:, 'goime_nerdfont_border', 0)
+
 " 自定义按键映射
 if !exists('g:goime_map_toggle')
   let g:goime_map_toggle = '<S-Space>'
@@ -80,7 +83,7 @@ if !exists('g:goime_map_tab')
   let g:goime_map_tab = '<Tab>'
 endif
 if !exists('g:goime_map_toggle_enable')
-  let g:goime_map_toggle_enable = '<C-;>'
+  let g:goime_map_toggle_enable = '<M-;>'
 endif
 
 
@@ -91,6 +94,8 @@ endif
 command! GoIMEToggle          call goime#toggle()
 command! GoIMEStatus          call goime#status_echo()
 command! GoIMEConnect         call goime#connect()
+command! GoIMEEnable          call goime#enable()
+command! GoIMEDisable         call goime#disable()
 command! GoIMEDisconnect      call goime#disconnect()
 command! GoIMEToggleEnabled   call goime#toggle_enabled()
 command! -nargs=1 GoIMEScheme call goime#set_scheme(<q-args>)
@@ -103,10 +108,13 @@ command! GoIMESchemePrev call goime#cycle_scheme(-1)
 " ============================================================================
 
 " 中/英文切换（默认 <S-Space>，右 Shift 等效）
-execute 'inoremap <silent> ' . g:goime_toggle_key . ' <C-\><C-O>:call goime#toggle()<CR>'
-
-" 插件启用/禁用（<C-;>）
-inoremap <silent> <C-;> <C-\><C-O>:call goime#toggle_enabled()<CR>
+if has('patch-8.2.1978')
+  execute 'inoremap <silent> ' . g:goime_toggle_key . ' <Cmd>call goime#toggle()<CR>'
+  execute 'inoremap <silent> ' . g:goime_map_toggle_enable . ' <Cmd>call goime#toggle_enabled()<CR>'
+else
+  execute 'inoremap <silent> ' . g:goime_toggle_key . ' <C-\><C-N>:call goime#toggle()<CR>a'
+  execute 'inoremap <silent> ' . g:goime_map_toggle_enable . ' <C-\><C-N>:call goime#toggle_enabled()<CR>a'
+endif
 
 " 右 Shift → 中/英文切换（在能区分左右 Shift 的终端/GVim 下生效）
 " 大多数终端无法区分左右 Shift，已通过 g:goime_toggle_key（默认 <S-Space>）提供等效功能
@@ -117,10 +125,9 @@ inoremap <silent> <C-;> <C-\><C-O>:call goime#toggle_enabled()<CR>
 
 augroup goime
   autocmd!
-  " 进入插入模式时自动连接
-  if g:goime_auto_connect
-    autocmd InsertEnter * call goime#on_insert_enter()
-  endif
+  " 进入插入模式时设置映射（始终注册，确保映射在每次进入插入模式时生效）
+  " auto_connect 仅控制是否自动连接 goimed，不影响映射设置
+  autocmd InsertEnter * call goime#on_insert_enter()
   " 离开插入模式时关闭候选窗
   autocmd InsertLeave * call goime#on_insert_leave()
   " 退出 Vim 时断开连接
