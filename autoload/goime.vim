@@ -744,7 +744,7 @@ function! s:setup_insert_mappings()
     if !empty(existing)
       let s:saved_maps[c] = existing
     endif
-    execute 'inoremap <silent> <expr> ' . c . ' goime#_on_char("' . c . '")'
+    execute 'inoremap <silent> <buffer> <expr> ' . c . ' goime#_on_char("' . c . '")'
   endfor
 
   " 保存并设置数字键 1-0 选词（0=索引9）
@@ -754,13 +754,13 @@ function! s:setup_insert_mappings()
     if !empty(existing)
       let s:saved_maps[key] = existing
     endif
-    execute 'inoremap <silent> <expr> ' . key . ' goime#_on_number(''' . key . ''')'
+    execute 'inoremap <silent> <buffer> <expr> ' . key . ' goime#_on_number(''' . key . ''')'
   endfor
   let existing = maparg('0', 'i', 0, 1)
   if !empty(existing)
     let s:saved_maps['0'] = existing
   endif
-  inoremap <silent> <expr> 0 goime#_on_number('10')
+  inoremap <silent> <buffer> <expr> 0 goime#_on_number('10')
 
   " 保存并设置翻页 + 特殊键
   for [gkey, fn] in [
@@ -776,7 +776,7 @@ function! s:setup_insert_mappings()
     if !empty(existing)
       let s:saved_maps[gkey] = existing
     endif
-    execute 'inoremap <silent> <expr> ' . gkey . ' ' . fn
+    execute 'inoremap <silent> <buffer> <expr> ' . gkey . ' ' . fn
   endfor
 
   " 标点符号全角映射（, . 已在上方翻页映射中处理）
@@ -792,7 +792,7 @@ function! s:setup_insert_mappings()
     if !empty(existing)
       let s:saved_maps[ascii] = existing
     endif
-    execute printf('inoremap <silent> <expr> %s goime#_on_punct(%s, %s)', ascii, string(ascii), string(fullwidth))
+    execute printf('inoremap <silent> <buffer> <expr> %s goime#_on_punct(%s, %s)', ascii, string(ascii), string(fullwidth))
   endfor
 
   " 引号配对映射
@@ -801,20 +801,20 @@ function! s:setup_insert_mappings()
     if !empty(existing)
       let s:saved_maps[ascii] = existing
     endif
-    execute printf('inoremap <silent> <expr> %s goime#_on_quote(%s)', ascii, string(ascii))
+    execute printf('inoremap <silent> <buffer> <expr> %s goime#_on_quote(%s)', ascii, string(ascii))
   endfor
 endfunction
 
 " s:restore_insert_mappings 恢复插入模式映射
 function! s:restore_insert_mappings()
   for c in split('abcdefghijklmnopqrstuvwxyz', '\zs')
-    silent! execute 'iunmap ' . c
+    silent! execute 'iunmap <buffer> ' . c
     if has_key(s:saved_maps, c)
       call s:restore_map(c)
     endif
   endfor
   for key in [g:goime_map_space, g:goime_map_backspace, g:goime_map_enter, g:goime_map_escape, g:goime_map_tab, g:goime_map_page_prev, g:goime_map_page_next]
-    silent! execute 'iunmap ' . key
+    silent! execute 'iunmap <buffer> ' . key
     if has_key(s:saved_maps, key)
       call s:restore_map(key)
     endif
@@ -822,12 +822,12 @@ function! s:restore_insert_mappings()
   " 数字键 1-0
   for i in range(1, 9)
     let key = string(i)
-    silent! execute 'iunmap ' . key
+    silent! execute 'iunmap <buffer> ' . key
     if has_key(s:saved_maps, key)
       call s:restore_map(key)
     endif
   endfor
-  silent! iunmap 0
+  silent! iunmap <buffer> 0
   if has_key(s:saved_maps, '0')
     call s:restore_map('0')
   endif
@@ -836,7 +836,7 @@ function! s:restore_insert_mappings()
     if ascii ==# g:goime_map_page_prev || ascii ==# g:goime_map_page_next
       continue
     endif
-    silent! execute 'iunmap ' . ascii
+    silent! execute 'iunmap <buffer> ' . ascii
     if has_key(s:saved_maps, ascii)
       call s:restore_map(ascii)
     endif
