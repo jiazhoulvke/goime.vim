@@ -867,7 +867,7 @@ endfunction
 
 " goime#_on_char 处理字母字符输入
 function! goime#_on_char(key)
-  if !s:connected || !s:chinese_mode
+  if !s:plugin_enabled || !s:connected || !s:chinese_mode
     " 未连接或英文模式时直接返回该字符
     return a:key
   endif
@@ -877,7 +877,7 @@ endfunction
 
 " goime#_on_space 处理空格
 function! goime#_on_space()
-  if !s:connected || !s:chinese_mode
+  if !s:plugin_enabled || !s:connected || !s:chinese_mode
     return "\<Space>"
   endif
   if s:preedit_text !=# ''
@@ -889,7 +889,7 @@ endfunction
 
 " goime#_on_backspace 处理退格
 function! goime#_on_backspace()
-  if !s:connected || !s:chinese_mode
+  if !s:plugin_enabled || !s:connected || !s:chinese_mode
     return "\<BS>"
   endif
   if s:preedit_text !=# ''
@@ -903,7 +903,7 @@ endfunction
 
 " goime#_on_enter 处理回车
 function! goime#_on_enter()
-  if !s:connected || !s:chinese_mode
+  if !s:plugin_enabled || !s:connected || !s:chinese_mode
     return "\<CR>"
   endif
   " 补全菜单打开时让给补全插件
@@ -927,7 +927,7 @@ endfunction
 
 " goime#_on_tab 处理 Tab（选第二个候选）
 function! goime#_on_tab()
-  if !s:connected || !s:chinese_mode || s:preedit_text ==# ''
+  if !s:plugin_enabled || !s:connected || !s:chinese_mode || s:preedit_text ==# ''
     return "\<Tab>"
   endif
   " 补全菜单打开时让给补全插件
@@ -1039,7 +1039,7 @@ endfunction
 " goime#_on_number 处理数字键选词
 " 数字键 1-9 对应候选索引 0-8，0 对应索引 9
 function! goime#_on_number(num)
-  if !s:connected || !s:chinese_mode || s:preedit_text ==# ''
+  if !s:plugin_enabled || !s:connected || !s:chinese_mode || s:preedit_text ==# ''
     return a:num
   endif
   let idx = a:num - 1
@@ -1055,7 +1055,7 @@ endfunction
 
 " goime#_on_comma 处理逗号键（向上翻页）
 function! goime#_on_comma()
-  if !s:connected || !s:chinese_mode
+  if !s:plugin_enabled || !s:connected || !s:chinese_mode
     return ','
   endif
   if s:preedit_text !=# ''
@@ -1067,7 +1067,7 @@ endfunction
 
 " goime#_on_period 处理句号键（向下翻页）
 function! goime#_on_period()
-  if !s:connected || !s:chinese_mode
+  if !s:plugin_enabled || !s:connected || !s:chinese_mode
     return '.'
   endif
   if s:preedit_text !=# ''
